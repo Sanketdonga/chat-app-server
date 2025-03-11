@@ -51,6 +51,8 @@ const io = new Server(server, {
   cors: corsOptions,
 });
 
+console.log("corsOptions", corsOptions);
+
 app.set("io", io);
 
 // Using Middlewares Here
@@ -75,7 +77,6 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  
   const user = socket.user;
   userSocketIDs.set(user._id.toString(), socket.id);
 
