@@ -359,7 +359,7 @@ const deleteChat = TryCatch(async (req, res, next) => {
   );
 
   await Promise.all([
-    deletFilesFromCloudinary(public_ids),
+    public_ids.length > 0 ? deletFilesFromCloudinary(public_ids) : null,
     chat.deleteOne(),
     Message.deleteMany({ chat: chatId }),
   ]);
