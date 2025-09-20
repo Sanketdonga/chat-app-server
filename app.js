@@ -21,6 +21,12 @@ import { getSockets } from "./lib/helper.js";
 import { Message } from "./models/message.js";
 import { corsOptions } from "./constants/config.js";
 import { socketAuthenticator } from "./middlewares/auth.js";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import session from "express-session";
+import { sendToken } from "./utils/features.js";
+import jwt from "jsonwebtoken";
+import { User } from "./models/user.js";
 
 import userRoute from "./routes/user.js";
 import chatRoute from "./routes/chat.js";
@@ -59,6 +65,15 @@ app.set("io", io);
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors(corsOptions));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/chat", chatRoute);
@@ -67,6 +82,83 @@ app.use("/api/v1/admin", adminRoute);
 app.get("/", (req, res) => {
   res.send("Hello World");
 });
+
+// Passport Google Strategy
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const email = profile.emails[0].value;
+
+        // Find existing user by googleId or username (email)
+        let user = await User.findOne({
+          $or: [{ googleId: profile.id }, { username: email }],
+        });
+
+        if (!user) {
+          // Create new user
+          user = await User.create({
+            googleId: profile.id,
+            username: email.split("@")[0],
+            name: profile.displayName,
+            bio: "",
+            password: Math.random().toString(36).slice(-8), // random password
+            avatar: {
+              public_id: "google-avatar",
+              url: profile.photos[0].value,
+            },
+          });
+        } else if (!user.googleId) {
+          // Update googleId if user existed with normal signup
+          user.googleId = profile.id;
+          await user.save();
+        }
+
+        return done(null, user);
+      } catch (err) {
+        return done(err, null);
+      }
+    }
+  )
+);
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  const user = await User.findById(id);
+  done(null, user);
+});
+
+// Routes
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+const cookieOptions = {
+  maxAge: 15 * 24 * 60 * 60 * 1000,
+  sameSite: "none",
+  httpOnly: true,
+  secure: true,
+};
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: `${process.env.FRONTEND_URL}/login?error=1`,
+  }),
+  (req, res) => {
+    const token = jwt.sign({ _id: req.user._id }, process.env.JWT_SECRET);
+
+    // Set cookie and redirect frontend
+    res
+      .cookie("chattu-token", token, cookieOptions)
+      .redirect(`${process.env.FRONTEND_URL}/login`);
+  }
+);
 
 io.use((socket, next) => {
   cookieParser()(

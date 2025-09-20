@@ -9,7 +9,10 @@ const schema = new Schema(
     },
     bio: {
       type: String,
-      required: true,
+    },
+    googleId: {
+      type: String,
+      unique: true,
     },
     username: {
       type: String,
