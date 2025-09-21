@@ -95,16 +95,15 @@ passport.use(
       try {
         const email = profile.emails[0].value;
 
-        // Find existing user by googleId or username (email)
         let user = await User.findOne({
-          $or: [{ googleId: profile.id }, { username: email }],
+          $or: [{ googleId: profile.id }, { email: email }],
         });
 
         if (!user) {
           // Create new user
           user = await User.create({
             googleId: profile.id,
-            username: email.split("@")[0],
+            email: email,
             name: profile.displayName,
             bio: "",
             password: Math.random().toString(36).slice(-8), // random password
@@ -140,7 +139,7 @@ app.get(
 );
 
 const cookieOptions = {
-  maxAge: 15 * 24 * 60 * 60 * 1000,
+  maxAge: 24 * 60 * 60 * 1000,
   sameSite: "none",
   httpOnly: true,
   secure: true,

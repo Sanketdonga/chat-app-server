@@ -51,7 +51,7 @@ const allUsers = TryCatch(async (req, res) => {
   const users = await User.find({});
 
   const transformedUsers = await Promise.all(
-    users.map(async ({ name, username, avatar, _id }) => {
+    users.map(async ({ name, email, avatar, _id }) => {
       const [groups, friends] = await Promise.all([
         Chat.countDocuments({ groupChat: true, members: _id }),
         Chat.countDocuments({ groupChat: false, members: _id }),
@@ -59,7 +59,7 @@ const allUsers = TryCatch(async (req, res) => {
 
       return {
         name,
-        username,
+        email,
         avatar: avatar.url,
         _id,
         groups,

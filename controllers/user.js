@@ -15,7 +15,11 @@ import { ErrorHandler } from "../utils/utility.js";
 
 // Create a new user and save it to the database and save token in cookie
 const newUser = TryCatch(async (req, res, next) => {
-  const { name, username, password, bio } = req.body;
+  const { name, email, password, bio } = req.body;
+
+  let user = await User.findOne({ email });
+
+  if (user) return next(new ErrorHandler("User already exists", 409));
 
   const file = req.file;
 
@@ -28,10 +32,10 @@ const newUser = TryCatch(async (req, res, next) => {
     url: result[0].url,
   };
 
-  const user = await User.create({
+  user = await User.create({
     name,
     bio,
-    username,
+    email,
     password,
     avatar,
   });
@@ -41,16 +45,15 @@ const newUser = TryCatch(async (req, res, next) => {
 
 // Login user and save token in cookie
 const login = TryCatch(async (req, res, next) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
-  const user = await User.findOne({ username }).select("+password");
+  const user = await User.findOne({ email }).select("+password");
 
-  if (!user) return next(new ErrorHandler("Invalid Username or Password", 404));
+  if (!user) return next(new ErrorHandler("Invalid Email or Password", 404));
 
   const isMatch = await compare(password, user.password);
 
-  if (!isMatch)
-    return next(new ErrorHandler("Invalid Username or Password", 404));
+  if (!isMatch) return next(new ErrorHandler("Invalid Email or Password", 404));
 
   sendToken(res, user, 200, `Welcome Back, ${user.name}`);
 });
