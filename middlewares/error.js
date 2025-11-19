@@ -36,4 +36,14 @@ const TryCatch = (passedFunc) => async (req, res, next) => {
   }
 };
 
+// const TryCatch = (fn) => {
+//   return async (req, res, next) => {
+//     try {
+//       await fn(req, res, next);
+//     } catch (err) {
+//       next(err);
+//     }
+//   };
+// };
+
 export { errorMiddleware, TryCatch };
