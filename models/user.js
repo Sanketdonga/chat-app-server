@@ -11,8 +11,7 @@ const schema = new Schema(
       type: String,
     },
     googleId: {
-      type: String,
-      unique: true,
+      type: String
     },
     email: {
       type: String,
